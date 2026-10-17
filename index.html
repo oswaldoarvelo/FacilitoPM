@@ -34,6 +34,9 @@
         
         #montoVisible { font-size: 26px; font-weight: bold; color: #333; margin-top: 15px; }
         
+        /* Botón extra para copiar datos manualmente por si acaso */
+        .btn-copiar-rapido { background-color: #ffc107; color: #212529; font-weight: bold; font-size: 16px; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; width: 85%; max-width: 320px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1); }
+
         .seccion-ref { margin-top: 20px; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: none; max-width: 350px; margin-left: auto; margin-right: auto; }
         .input-ref { font-size: 20px; padding: 10px; width: 90%; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ccc; text-align: center; }
         .btn-guardar { font-size: 18px; padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; }
@@ -106,6 +109,9 @@
     <div id="qrcode"></div>
     <h2 id="montoVisible"></h2>
 
+    <!-- Botón directo para copiar los datos al portapapeles del teléfono -->
+    <button id="btnCopiarPortapapeles" class="btn-copiar-rapido" style="display:none;" type="button">📋 Copiar Datos para Pegar</button>
+
     <div id="seccionReferencia" class="seccion-ref">
         <h3>Pago realizado</h3>
         <p style="font-size: 14px; color: #555;">Introduce los últimos números de la referencia del banco:</p>
@@ -142,6 +148,7 @@
         var monedaActual = "Bs";
         var tasaBCV = 0;
         var montoActualBs = 0;
+        var textoDatosQR = "";
         
         var datosVendedor = JSON.parse(localStorage.getItem("facilito_datos_banco")) || null;
         var historialCobros = JSON.parse(localStorage.getItem("facilito_historial")) || [];
@@ -232,8 +239,8 @@
                 montoActualBs = valorInput.toFixed(2);
             }
 
-            // Cadena en formato estándar Pago Móvil Interbancario (PAGOMOVIL:BANCO;TELEFONO;CEDULA;MONTO)
-            var cadenaQR = "PAGOMOVIL:" + datosVendedor.banco + ";" + datosVendedor.telefono + ";" + datosVendedor.cedula + ";" + montoActualBs;
+            // Estructura ordenada que al escanear o copiar se pega perfectamente en orden en el banco
+            textoDatosQR = "Banco: " + datosVendedor.banco + "\nTeléfono: " + datosVendedor.telefono + "\nCédula/RIF: " + datosVendedor.cedula + "\nMonto: " + montoActualBs;
 
             try {
                 var mensajeVoz = "Facilito PM. Cobrando " + montoActualBs + " bolivares.";
@@ -248,7 +255,7 @@
             contenedorQR.innerHTML = "";
             
             new QRCode(contenedorQR, {
-                text: cadenaQR,
+                text: textoDatosQR,
                 width: 230,
                 height: 230,
                 colorDark: "#000000",
@@ -256,8 +263,19 @@
                 correctLevel: QRCode.CorrectLevel.M
             });
 
+            // Mostrar botón para copiar directamente con un toque si se desea
+            document.getElementById("btnCopiarPortapapeles").style.display = "inline-block";
             document.getElementById("seccionReferencia").style.display = "block";
             document.getElementById("inputReferencia").value = "";
+        });
+
+        // Copiar al portapapeles con un toque para pegar en el banco al instante
+        document.getElementById("btnCopiarPortapapeles").addEventListener("click", function() {
+            navigator.clipboard.writeText(textoDatosQR).then(function() {
+                alert("¡Datos copiados al portapapeles! Abre tu app de banco y pégalos donde necesites.");
+            }, function() {
+                alert("No se pudo copiar automáticamente, pero puedes verlos en pantalla.");
+            });
         });
 
         document.getElementById("btnRegistrar").addEventListener("click", function() {
@@ -281,6 +299,7 @@
             document.getElementById("monto").value = "";
             document.getElementById("qrcode").innerHTML = "";
             document.getElementById("montoVisible").innerText = "";
+            document.getElementById("btnCopiarPortapapeles").style.display = "none";
             document.getElementById("seccionReferencia").style.display = "none";
         });
 
@@ -327,8 +346,8 @@
             }
 
             var sumaTotal = 0;
-            var textoReporte = "📊 *CIERRE DE CAJA - FACILITO PM*\n";
-            textoReporte += "👤 *Vendedor:* " + (datosVendedor ? datosVendedor.cedula : "Oswaldo Arvelo") + "\n";
+            var textoReporte = "📊 CIERRE DE CAJA - FACILITO PM\n";
+            textoReporte += "👤 Vendedor: " + (datosVendedor ? datosVendedor.cedula : "Oswaldo Arvelo") + "\n";
             textoReporte += "-----------------------------------\n";
 
             for (var i = 0; i < historialCobros.length; i++) {
@@ -338,21 +357,12 @@
             }
 
             textoReporte += "-----------------------------------\n";
-            textoReporte += "💰 *TOTAL COBRADO:* " + sumaTotal.toFixed(2) + " Bs.\n";
-            textoReporte += "📦 *TOTAL VENTAS:* " + historialCobros.length;
+            textoReporte += "💰 TOTAL COBRADO: " + sumaTotal.toFixed(2) + " Bs.\n";
+            textoReporte += "📦 TOTAL VENTAS: " + historialCobros.length;
 
             var urlWhatsApp = "https://api.whatsapp.com/send?text=" + encodeURIComponent(textoReporte);
             window.open(urlWhatsApp, "_blank");
         });
 
         document.getElementById("btnLimpiarCierre").addEventListener("click", function() {
-            if (confirm("¿Estás seguro de reiniciar el día? Se borrarán las ventas registradas del cierre.")) {
-                historialCobros = [];
-                localStorage.removeItem("facilito_historial");
-                actualizarVistaCierre();
-                alert("Día reiniciado con éxito.");
-            }
-        });
-    </script>
-</body>
-</html>
+            if (confirm("¿Estás seguro de reiniciar el día? Se borrarán la
