@@ -28,12 +28,10 @@
         input.monto-input { font-size: 28px; padding: 15px; width: 85%; max-width: 320px; margin-bottom: 15px; border-radius: 12px; border: 2px solid #ccc; text-align: center; }
         button.btn-cobrar { font-size: 24px; font-weight: bold; padding: 18px 35px; background-color: #28a745; color: white; border: none; border-radius: 12px; cursor: pointer; width: 85%; max-width: 320px; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); }
         
-        #qrcode { margin-top: 20px; display: flex; flex-direction: column; align-items: center; }
+        #qrcode { margin-top: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         #qrcode img { border: 4px solid #333; border-radius: 8px; background: white; padding: 5px; }
         
         #montoVisible { font-size: 26px; font-weight: bold; color: #333; margin-top: 15px; }
-        
-        .btn-copiar-rapido { background-color: #ffc107; color: #212529; font-weight: bold; font-size: 16px; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; width: 85%; max-width: 320px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1); }
 
         .seccion-ref { margin-top: 20px; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: none; max-width: 350px; margin-left: auto; margin-right: auto; }
         .input-ref { font-size: 20px; padding: 10px; width: 90%; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ccc; text-align: center; }
@@ -64,24 +62,15 @@
         
         <label>Banco de destino:</label>
         <select id="selectBanco">
-            <option value="0134">Banesco (0134)</option>
-            <option value="0102">Banco de Venezuela (0102)</option>
-            <option value="0105">Mercantil (0105)</option>
-            <option value="0191">BNC - Banco Nacional de Crédito (0191)</option>
-            <option value="0108">BBVA Provincial (0108)</option>
-            <option value="0172">Bancamiga (0172)</option>
-            <option value="0151">BFC Banco Fondo Común (0151)</option>
-            <option value="0114">Bancaribe (0114)</option>
-            <option value="0169">Mi Banco (0169)</option>
-            <option value="0137">Sofitasa (0137)</option>
-            <option value="0138">Banco Plaza (0138)</option>
-            <option value="0104">Venezolano de Crédito (0104)</option>
-            <option value="0168">Bancrecer (0168)</option>
-            <option value="0175">Banco Bicentenario (0175)</option>
-            <option value="0163">Banco del Tesoro (0163)</option>
-            <option value="0171">Banco Activo (0171)</option>
-            <option value="0174">Banplus (0174)</option>
-            <option value="0177">Banco FANB (0177)</option>
+            <option value="Banesco">Banesco (0134)</option>
+            <option value="Banco de Venezuela">Banco de Venezuela (0102)</option>
+            <option value="Mercantil">Mercantil (0105)</option>
+            <option value="BNC">BNC - Banco Nacional de Crédito (0191)</option>
+            <option value="Provincial">BBVA Provincial (0108)</option>
+            <option value="Bancamiga">Bancamiga (0172)</option>
+            <option value="BFC">BFC Banco Fondo Común (0151)</option>
+            <option value="Bancaribe">Bancaribe (0114)</option>
+            <option value="Otro">Otro Banco</option>
         </select>
 
         <label>Cédula o RIF (Ej: V12345678 / J12345678):</label>
@@ -106,8 +95,6 @@
     
     <div id="qrcode"></div>
     <h2 id="montoVisible"></h2>
-
-    <button id="btnCopiarPortapapeles" class="btn-copiar-rapido" style="display:none;" type="button">📋 Copiar Datos para Pegar en Banco</button>
 
     <div id="seccionReferencia" class="seccion-ref">
         <h3>Pago realizado</h3>
@@ -143,9 +130,8 @@
 
     <script>
         var monedaActual = "Bs";
-        var tasaBCV = 36.50;
+        var tasaBCV = 0;
         var montoActualBs = 0;
-        var cadenaLimpiaBanco = "";
         
         var datosVendedor = JSON.parse(localStorage.getItem("facilito_datos_banco")) || null;
         var historialCobros = JSON.parse(localStorage.getItem("facilito_historial")) || [];
@@ -160,7 +146,7 @@
                 sec.style.display = "none";
             } else {
                 if (datosVendedor) {
-                    document.getElementById("selectBanco").value = datosVendedor.banco || "0134";
+                    document.getElementById("selectBanco").value = datosVendedor.banco || "Banesco";
                     document.getElementById("inputCedula").value = datosVendedor.cedula || "";
                     document.getElementById("inputTelefono").value = datosVendedor.telefono || "";
                 }
@@ -170,11 +156,11 @@
 
         document.getElementById("btnGuardarConfig").addEventListener("click", function() {
             var b = document.getElementById("selectBanco").value;
-            var c = document.getElementById("inputCedula").value.trim().toUpperCase().replace(/[^VGJ0-9]/g, '');
-            var t = document.getElementById("inputTelefono").value.trim().replace(/[^0-9]/g, '');
+            var c = document.getElementById("inputCedula").value.trim().toUpperCase();
+            var t = document.getElementById("inputTelefono").value.trim();
 
-            if (!c || !t || t.length < 11) {
-                alert("Por favor introduce una Cédula/RIF válida (ej. V12345678) y un teléfono de 11 dígitos (ej. 04141234567).");
+            if (!c || !t) {
+                alert("Por favor completa la Cédula/RIF y el Teléfono.");
                 return;
             }
 
@@ -189,12 +175,11 @@
             try {
                 var respuesta = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
                 var datos = await respuesta.json();
-                if (datos && datos.promedio) {
-                    tasaBCV = datos.promedio;
-                    document.getElementById("tasaDisplay").innerText = "Tasa BCV Oficial: " + tasaBCV.toFixed(2) + " Bs/$";
-                }
+                tasaBCV = datos.promedio;
+                document.getElementById("tasaDisplay").innerText = "Tasa BCV Oficial: " + tasaBCV.toFixed(2) + " Bs/$";
             } catch (error) {
-                document.getElementById("tasaDisplay").innerText = "Tasa BCV (Modo sin internet): " + tasaBCV.toFixed(2) + " Bs/$";
+                tasaBCV = 36.50; 
+                document.getElementById("tasaDisplay").innerText = "Tasa BCV (Modo sin internet): 36.50 Bs/$";
             }
         }
 
@@ -223,20 +208,24 @@
 
             var valorInput = parseFloat(document.getElementById("monto").value);
             if (!valorInput || valorInput <= 0) {
-                alert("Por favor ingrese un monto válido.");
+                alert("Por favor ingrese un monto valido");
                 return;
             }
             
             if (monedaActual === "USD") {
+                if (tasaBCV === 0) {
+                    alert("Esperando la tasa BCV oficial. Por favor intente en un segundo.");
+                    return;
+                }
                 montoActualBs = (valorInput * tasaBCV).toFixed(2);
             } else {
                 montoActualBs = valorInput.toFixed(2);
             }
 
-            cadenaLimpiaBanco = datosVendedor.banco + " " + datosVendedor.telefono + " " + datosVendedor.cedula + " " + montoActualBs;
-
+            var textoPago = "Banco: " + datosVendedor.banco + "\nTelefono: " + datosVendedor.telefono + "\nCedula: " + datosVendedor.cedula + "\nMonto: " + montoActualBs;
+            
             try {
-                var mensajeVoz = "Facilito PM. Cobrando " + montoActualBs + " bolívares.";
+                var mensajeVoz = "Facilito PM. Cobrando " + montoActualBs + " bolivares.";
                 var utterance = new SpeechSynthesisUtterance(mensajeVoz);
                 utterance.lang = "es-ES";
                 window.speechSynthesis.speak(utterance);
@@ -245,42 +234,17 @@
             document.getElementById("montoVisible").innerText = "Total a pagar: " + montoActualBs + " Bs.";
             
             var contenedorQR = document.getElementById("qrcode");
-            var urlQR = "https://api.qrserver.com/v1/create-qr-code/?size=230x230&data=" + encodeURIComponent(cadenaLimpiaBanco);
-            contenedorQR.innerHTML = '<img src="' + urlQR + '" alt="Código QR de Pago">';
+            var urlQR = "https://api.qrserver.com/v1/create-qr-code/?size=230x230&data=" + encodeURIComponent(textoPago);
+            contenedorQR.innerHTML = '<img src="' + urlQR + '" alt="Codigo QR">';
 
-            document.getElementById("btnCopiarPortapapeles").style.display = "inline-block";
             document.getElementById("seccionReferencia").style.display = "block";
             document.getElementById("inputReferencia").value = "";
         });
 
-        document.getElementById("btnCopiarPortapapeles").addEventListener("click", function() {
-            if (!cadenaLimpiaBanco) return;
-            
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(cadenaLimpiaBanco).then(function() {
-                    alert("¡Datos copiados!\n\nAbre tu app de banco, entra a Pago Móvil y selecciona 'Pegar datos'.");
-                }).catch(function() {
-                    copiarManual(cadenaLimpiaBanco);
-                });
-            } else {
-                copiarManual(cadenaLimpiaBanco);
-            }
-        });
-
-        function copiarManual(texto) {
-            var tempInput = document.createElement("input");
-            tempInput.value = texto;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand("copy");
-            document.body.removeChild(tempInput);
-            alert("¡Datos copiados al portapapeles!\n\nAbre tu app de banco, entra a Pago Móvil y selecciona 'Pegar datos'.");
-        }
-
         document.getElementById("btnRegistrar").addEventListener("click", function() {
             var ref = document.getElementById("inputReferencia").value.trim();
             if (!ref) {
-                alert("Por favor coloque el número de referencia.");
+                alert("Por favor coloque el número de referencia");
                 return;
             }
 
@@ -298,7 +262,6 @@
             document.getElementById("monto").value = "";
             document.getElementById("qrcode").innerHTML = "";
             document.getElementById("montoVisible").innerText = "";
-            document.getElementById("btnCopiarPortapapeles").style.display = "none";
             document.getElementById("seccionReferencia").style.display = "none";
         });
 
@@ -365,3 +328,12 @@
 
         document.getElementById("btnLimpiarCierre").addEventListener("click", function() {
             if (confirm("¿Estás seguro de reiniciar el día? Se borrarán las ventas registradas del cierre.")) {
+                historialCobros = [];
+                localStorage.removeItem("facilito_historial");
+                actualizarVistaCierre();
+                alert("Día reiniciado con éxito.");
+            }
+        });
+    </script>
+</body>
+</html>
