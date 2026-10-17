@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facilito PM</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; background-color: #f7f7f7; }
+        .app-title { font-size: 32px; font-weight: bold; color: #007bff; margin-top: 5px; margin-bottom: 2px; }
+        .sub-title { font-size: 15px; color: #666; margin-bottom: 2px; }
+        .author-credits { font-size: 12px; color: #888; font-style: italic; margin-bottom: 15px; }
+        
+        .currency-selector { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
+        .currency-btn { font-size: 18px; font-weight: bold; padding: 10px 20px; border: 2px solid #007bff; background: #fff; color: #007bff; border-radius: 8px; cursor: pointer; flex: 1; max-width: 150px; }
+        .currency-btn.active { background: #007bff; color: #fff; }
+
+        .tasa-info { font-size: 14px; color: #333; margin-bottom: 15px; font-weight: bold; background: #e9ecef; padding: 8px; border-radius: 6px; display: inline-block; }
+        
+        input { font-size: 28px; padding: 15px; width: 85%; max-width: 320px; margin-bottom: 15px; border-radius: 12px; border: 2px solid #ccc; text-align: center; }
+        button.btn-cobrar { font-size: 24px; font-weight: bold; padding: 18px 35px; background-color: #28a745; color: white; border: none; border-radius: 12px; cursor: pointer; width: 85%; max-width: 320px; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); }
+        
+        #qrcode { margin-top: 25px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #montoVisible { font-size: 26px; font-weight: bold; color: #333; margin-top: 15px; }
+        
+        /* Sección de confirmación de referencia */
+        .seccion-ref { margin-top: 20px; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: none; max-width: 350px; margin-left: auto; margin-right: auto; }
+        .input-ref { font-size: 20px; padding: 10px; width: 90%; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ccc; text-align: center; }
+        .btn-guardar { font-size: 18px; padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; }
+
+        /* Sección del Cierre del Día */
+        .btn-cierre-main { font-size: 18px; font-weight: bold; padding: 12px 25px; background-color: #17a2b8; color: white; border: none; border-radius: 10px; cursor: pointer; margin-top: 30px; width: 85%; max-width: 320px; }
+        .seccion-cierre { margin-top: 20px; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: none; max-width: 350px; margin-left: auto; margin-right: auto; text-align: left; }
+        .item-venta { border-bottom: 1px solid #eee; padding: 8px 0; font-size: 15px; }
+        .btn-ws { background-color: #25D366; color: white; font-weight: bold; border: none; padding: 12px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; margin-top: 15px; }
+        .btn-borrar { background-color: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-size: 13px; cursor: pointer; width: 100%; margin-top: 10px; }
+        
+        .banner { font-size: 13px; background: #333; color: #fff; padding: 8px; margin-bottom: 15px; border-radius: 6px; }
+        footer { margin-top: 30px; font-size: 12px; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="banner">Espacio publicitario disponible</div>
+    
+    <div class="app-title">Facilito PM</div>
+    <div class="sub-title">Cobro rápido y sencillo</div>
+    <div class="author-credits">Desarrollado por Oswaldo Arvelo</div>
+
+    <div class="currency-selector">
+        <button id="btnBs" class="currency-btn active" type="button">Bs.</button>
+        <button id="btnUSD" class="currency-btn" type="button">$ BCV</button>
+    </div>
+
+    <div id="tasaDisplay" class="tasa-info">Tasa BCV: 36.50 Bs/$</div>
+
+    <input type="number" id="monto" placeholder="Monto" inputmode="decimal">
+    <br>
+    <button class="btn-cobrar" id="btnGenerar" type="button">Generar QR</button>
+    
+    <div id="qrcode"></div>
+    <h2 id="montoVisible"></h2>
+
+    <!-- Registrar Referencia al finalizar -->
+    <div id="seccionReferencia" class="seccion-ref">
+        <h3>Pago realizado</h3>
+        <p style="font-size: 14px; color: #555;">Introduce los últimos números de la referencia del banco:</p>
+        <input type="text" id="inputReferencia" class="input-ref" placeholder="Ej: 1234">
+        <br>
+        <button class="btn-guardar" id="btnRegistrar">Guardar Cobro</button>
+    </div>
+
+    <!-- Botón y Sección de Cierre del Día -->
+    <button class="btn-cierre-main" id="btnVerCierre">📊 Cierre de Caja / Día</button>
+
+    <div id="seccionCierre" class="seccion-cierre">
+        <h3 style="text-align:center; margin-top:0;">Resumen del Día</h3>
+        <p><strong>Ventas totales:</strong> <span id="numVentas">0</span></p>
+        <p><strong>Total Cobrado:</strong> <span id="totalMonto" style="color:#28a745; font-size:18px; font-weight:bold;">0.00 Bs.</span></p>
+        <hr>
+        <h4>Detalle de cobros:</h4>
+        <div id="listaVentas">No hay cobros registrados hoy.</div>
+        
+        <button class="btn-ws" id="btnEnviarWS">📲 Enviar Cierre por WhatsApp</button>
+        <button class="btn-borrar" id="btnLimpiarCierre">⚠️ Reiniciar Día (Borrar Historial)</button>
+    </div>
+
+    <footer>
+        Facilito PM &copy; Creado por Oswaldo Arvelo
+    </footer>
+
+    <script>
+        const datosFijos = {
+            banco: "Banesco",
+            telefono: "04141234567",
+            cedula: "V12345678"
+        };
+
+        var monedaActual = "Bs";
+        var tasaBCV = 36.50;
+        var montoActualBs = 0;
+        
+        // Cargar historial guardado en el teléfono/PC
+        var historialCobros = JSON.parse(localStorage.getItem("facilito_historial")) || [];
+
+        document.getElementById("btnBs").addEventListener("click", function() {
+            monedaActual = "Bs";
+            document.getElementById("btnBs").classList.add("active");
+            document.getElementById("btnUSD").classList.remove("active");
+            document.getElementById("monto").placeholder = "Monto en Bs.";
+        });
+
+        document.getElementById("btnUSD").addEventListener("click", function() {
+            monedaActual = "USD";
+            document.getElementById("btnUSD").classList.add("active");
+            document.getElementById("btnBs").classList.remove("active");
+            document.getElementById("monto").placeholder = "Monto en $";
+        });
+
+        document.getElementById("btnGenerar").addEventListener("click", function() {
+            var valorInput = parseFloat(document.getElementById("monto").value);
+            if (!valorInput || valorInput <= 0) {
+                alert("Por favor ingrese un monto valido");
+                return;
+            }
+            
+            if (monedaActual === "USD") {
+                montoActualBs = (valorInput * tasaBCV).toFixed(2);
+            } else {
+                montoActualBs = valorInput.toFixed(2);
+            }
+
+            var textoPago = "Banco: " + datosFijos.banco + "\nTelefono: " + datosFijos.telefono + "\nCedula: " + datosFijos.cedula + "\nMonto: " + montoActualBs;
+            
+            try {
+                var mensajeVoz = "Facilito PM. Cobrando " + montoActualBs + " bolivares.";
+                var utterance = new SpeechSynthesisUtterance(mensajeVoz);
+                utterance.lang = "es-ES";
+                window.speechSynthesis.speak(utterance);
+            } catch(e) {}
+
+            document.getElementById("montoVisible").innerText = "Total a pagar: " + montoActualBs + " Bs.";
+            
+            var contenedorQR = document.getElementById("qrcode");
+            var urlQR = "https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=" + encodeURIComponent(textoPago);
+            
+            contenedorQR.innerHTML = '<img src="' + urlQR + '" alt="Codigo QR" style="border: 4px solid #333; border-radius: 8px; background: white; padding: 5px;">' +
+                                     '<br><a href="' + urlQR + '" target="_blank" style="margin-top:10px; font-size:14px; color:#007bff;">Si no carga el QR, haz clic aqui para abrirlo</a>';
+
+            document.getElementById("seccionReferencia").style.display = "block";
+            document.getElementById("inputReferencia").value = "";
+        });
+
+        // Guardar el cobro en el historial
+        document.getElementById("btnRegistrar").addEventListener("click", function() {
+            var ref = document.getElementById("inputReferencia").value;
+            if (!ref) {
+                alert("Por favor coloque el número de referencia");
+                return;
+            }
+
+            var nuevoCobro = {
+                monto: montoActualBs,
+                referencia: ref,
+                hora: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            };
+
+            historialCobros.push(nuevoCobro);
+            localStorage.setItem("facilito_historial", JSON.stringify(historialCobros));
+
+            alert("¡Cobro registrado con éxito!\nMonto: " + montoActualBs + " Bs.\nRef: " + ref);
+            
+            // Limpiar pantalla
+            document.getElementById("monto").value = "";
+            document.getElementById("qrcode").innerHTML = "";
+            document.getElementById("montoVisible").innerText = "";
+            document.getElementById("seccionReferencia").style.display = "none";
+        });
+
+        // Mostrar / Ocultar el Resumen del Cierre
+        document.getElementById("btnVerCierre").addEventListener("click", function() {
+            var seccion = document.getElementById("seccionCierre");
+            if (seccion.style.display === "block") {
+                seccion.style.display = "none";
+            } else {
+                actualizarVistaCierre();
+                seccion.style.display = "block";
+            }
+        });
+
+        function actualizarVistaCierre() {
+            var listaDiv = document.getElementById("listaVentas");
+            var numVentasSpan = document.getElementById("numVentas");
+            var totalMontoSpan = document.getElementById("totalMonto");
+
+            if (historialCobros.length === 0) {
+                listaDiv.innerHTML = "No hay cobros registrados hoy.";
+                numVentasSpan.innerText = "0";
+                totalMontoSpan.innerText = "0.00 Bs.";
+                return;
+            }
+
+            var html = "";
+            var sumaTotal = 0;
+
+            for (var i = 0; i < historialCobros.length; i++) {
+                var item = historialCobros[i];
+                sumaTotal += parseFloat(item.monto);
+                html += '<div class="item-venta"><strong>#' + (i+1) + ' - ' + item.monto + ' Bs.</strong> (Ref: ' + item.referencia + ') <small style="color:#777;">' + item.hora + '</small></div>';
+            }
+
+            listaDiv.innerHTML = html;
+            numVentasSpan.innerText = historialCobros.length;
+            totalMontoSpan.innerText = sumaTotal.toFixed(2) + " Bs.";
+        }
+
+        // Enviar Reporte de Cierre por WhatsApp
+        document.getElementById("btnEnviarWS").addEventListener("click", function() {
+            if (historialCobros.length === 0) {
+                alert("No hay ventas registradas para enviar.");
+                return;
+            }
+
+            var sumaTotal = 0;
+            var textoReporte = "📊 CIERRE DE CAJA - FACILITO PM\n";
+            textoReporte += "👤 Vendedor: Oswaldo Arvelo\n";
+            textoReporte += "-----------------------------------\n";
+
+            for (var i = 0; i < historialCobros.length; i++) {
+                var item = historialCobros[i];
+                sumaTotal += parseFloat(item.monto);
+                textoReporte += (i+1) + ". " + item.monto + " Bs. | Ref: " + item.referencia + " (" + item.hora + ")\n";
+            }
+
+            textoReporte += "-----------------------------------\n";
+            textoReporte += "💰 TOTAL COBRADO: " + sumaTotal.toFixed(2) + " Bs.\n";
+            textoReporte += "📦 TOTAL VENTAS: " + historialCobros.length;
+
+            var urlWhatsApp = "https://api.whatsapp.com/send?text=" + encodeURIComponent(textoReporte);
+            window.open(urlWhatsApp, "_blank");
+        });
+
+        // Reiniciar Día
+        document.getElementById("btnLimpiarCierre").addEventListener("click", function() {
+            if (confirm("¿Estás seguro de reiniciar el día? Se borrarán las ventas registradas del cierre.")) {
+                historialCobros = [];
+                localStorage.removeItem("facilito_historial");
+                actualizarVistaCierre();
+                alert("Día reiniciado con éxito.");
+            }
+        });
+    </script>
+</body>
+</html>

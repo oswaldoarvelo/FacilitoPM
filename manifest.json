@@ -1,0 +1,14 @@
+{
+  "name": "Facilito PM",
+  "short_name": "Facilito PM",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f7f7f7",
+  "icons": [
+    {
+      "src": "icono.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
