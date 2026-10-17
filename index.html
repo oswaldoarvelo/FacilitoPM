@@ -11,6 +11,9 @@
         .sub-title { font-size: 15px; color: #666; margin-bottom: 2px; }
         .author-credits { font-size: 12px; color: #888; font-style: italic; margin-bottom: 15px; }
         
+        /* Botón destacado de Instalación */
+        #btnInstalarApp { display: none; background-color: #ffc107; color: #212529; font-weight: bold; font-size: 16px; padding: 12px 20px; border: none; border-radius: 10px; width: 85%; max-width: 320px; margin: 10px auto 20px auto; cursor: pointer; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); }
+
         .currency-selector { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
         .currency-btn { font-size: 18px; font-weight: bold; padding: 10px 20px; border: 2px solid #007bff; background: #fff; color: #007bff; border-radius: 8px; cursor: pointer; flex: 1; max-width: 150px; }
         .currency-btn.active { background: #007bff; color: #fff; }
@@ -23,12 +26,10 @@
         #qrcode { margin-top: 25px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         #montoVisible { font-size: 26px; font-weight: bold; color: #333; margin-top: 15px; }
         
-        /* Sección de confirmación de referencia */
         .seccion-ref { margin-top: 20px; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: none; max-width: 350px; margin-left: auto; margin-right: auto; }
         .input-ref { font-size: 20px; padding: 10px; width: 90%; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ccc; text-align: center; }
         .btn-guardar { font-size: 18px; padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; }
 
-        /* Sección del Cierre del Día */
         .btn-cierre-main { font-size: 18px; font-weight: bold; padding: 12px 25px; background-color: #17a2b8; color: white; border: none; border-radius: 10px; cursor: pointer; margin-top: 30px; width: 85%; max-width: 320px; }
         .seccion-cierre { margin-top: 20px; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: none; max-width: 350px; margin-left: auto; margin-right: auto; text-align: left; }
         .item-venta { border-bottom: 1px solid #eee; padding: 8px 0; font-size: 15px; }
@@ -46,6 +47,9 @@
     <div class="sub-title">Cobro rápido y sencillo</div>
     <div class="author-credits">Desarrollado por Oswaldo Arvelo</div>
 
+    <!-- Botón especial de instalación que solo aparece si no está instalada -->
+    <button id="btnInstalarApp">📲 Toca aquí para INSTALAR la App</button>
+
     <div class="currency-selector">
         <button id="btnBs" class="currency-btn active" type="button">Bs.</button>
         <button id="btnUSD" class="currency-btn" type="button">$ BCV</button>
@@ -60,7 +64,6 @@
     <div id="qrcode"></div>
     <h2 id="montoVisible"></h2>
 
-    <!-- Registrar Referencia al finalizar -->
     <div id="seccionReferencia" class="seccion-ref">
         <h3>Pago realizado</h3>
         <p style="font-size: 14px; color: #555;">Introduce los últimos números de la referencia del banco:</p>
@@ -69,7 +72,6 @@
         <button class="btn-guardar" id="btnRegistrar">Guardar Cobro</button>
     </div>
 
-    <!-- Botón y Sección de Cierre del Día -->
     <button class="btn-cierre-main" id="btnVerCierre">📊 Cierre de Caja / Día</button>
 
     <div id="seccionCierre" class="seccion-cierre">
@@ -96,12 +98,30 @@
         };
 
         var monedaActual = "Bs";
-        var tasaBCV = 0; // Se cargará en vivo
+        var tasaBCV = 0;
         var montoActualBs = 0;
+        var diferidoInstalacion;
         
         var historialCobros = JSON.parse(localStorage.getItem("facilito_historial")) || [];
 
-        // Función para consultar la tasa real del BCV en vivo
+        // Detectar si el teléfono permite la instalación directa
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            diferidoInstalacion = e;
+            document.getElementById('btnInstalarApp').style.display = 'block';
+        });
+
+        document.getElementById('btnInstalarApp').addEventListener('click', async () => {
+            if (diferidoInstalacion) {
+                diferidoInstalacion.prompt();
+                const { outcome } = await diferidoInstalacion.userChoice;
+                if (outcome === 'accepted') {
+                    document.getElementById('btnInstalarApp').style.display = 'none';
+                }
+                diferidoInstalacion = null;
+            }
+        });
+
         async function consultarTasaBCV() {
             try {
                 var respuesta = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
@@ -109,13 +129,11 @@
                 tasaBCV = datos.promedio;
                 document.getElementById("tasaDisplay").innerText = "Tasa BCV Oficial: " + tasaBCV.toFixed(2) + " Bs/$";
             } catch (error) {
-                // Si falla el internet, ponemos un respaldo de emergencia pero avisamos
                 tasaBCV = 36.50; 
                 document.getElementById("tasaDisplay").innerText = "Tasa BCV (Modo sin internet): 36.50 Bs/$";
             }
         }
 
-        // Consultar tasa al iniciar la app
         consultarTasaBCV();
 
         document.getElementById("btnBs").addEventListener("click", function() {
