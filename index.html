@@ -34,8 +34,7 @@
         
         #montoVisible { font-size: 26px; font-weight: bold; color: #333; margin-top: 15px; }
         
-        /* Botón extra para copiar datos manualmente por si acaso */
-        .btn-copiar-rapido { background-color: #ffc107; color: #212529; font-weight: bold; font-size: 16px; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; width: 85%; max-width: 320px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1); }
+        .btn-copiar-rapido { background-color: #ffc107; color: #212529; font-weight: bold; font-size: 16px; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; width: 85%; max-width: 320px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1); }
 
         .seccion-ref { margin-top: 20px; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: none; max-width: 350px; margin-left: auto; margin-right: auto; }
         .input-ref { font-size: 20px; padding: 10px; width: 90%; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ccc; text-align: center; }
@@ -109,8 +108,7 @@
     <div id="qrcode"></div>
     <h2 id="montoVisible"></h2>
 
-    <!-- Botón directo para copiar los datos al portapapeles del teléfono -->
-    <button id="btnCopiarPortapapeles" class="btn-copiar-rapido" style="display:none;" type="button">📋 Copiar Datos para Pegar</button>
+    <button id="btnCopiarPortapapeles" class="btn-copiar-rapido" style="display:none;" type="button">📋 Copiar Datos para Pegar en Banco</button>
 
     <div id="seccionReferencia" class="seccion-ref">
         <h3>Pago realizado</h3>
@@ -148,7 +146,7 @@
         var monedaActual = "Bs";
         var tasaBCV = 0;
         var montoActualBs = 0;
-        var textoDatosQR = "";
+        var cadenaLimpiaBanco = "";
         
         var datosVendedor = JSON.parse(localStorage.getItem("facilito_datos_banco")) || null;
         var historialCobros = JSON.parse(localStorage.getItem("facilito_historial")) || [];
@@ -239,8 +237,10 @@
                 montoActualBs = valorInput.toFixed(2);
             }
 
-            // Estructura ordenada que al escanear o copiar se pega perfectamente en orden en el banco
-            textoDatosQR = "Banco: " + datosVendedor.banco + "\nTeléfono: " + datosVendedor.telefono + "\nCédula/RIF: " + datosVendedor.cedula + "\nMonto: " + montoActualBs;
+            // Cadena limpia estándar sin etiquetas para pegado automático en la banca móvil:
+            // Formato: BANCO TELEFONO CEDULA MONTO
+            // Ej: 0134 04141234567 V12345678 150.00
+            cadenaLimpiaBanco = datosVendedor.banco + " " + datosVendedor.telefono + " " + datosVendedor.cedula + " " + montoActualBs;
 
             try {
                 var mensajeVoz = "Facilito PM. Cobrando " + montoActualBs + " bolivares.";
@@ -255,7 +255,7 @@
             contenedorQR.innerHTML = "";
             
             new QRCode(contenedorQR, {
-                text: textoDatosQR,
+                text: cadenaLimpiaBanco,
                 width: 230,
                 height: 230,
                 colorDark: "#000000",
@@ -263,18 +263,16 @@
                 correctLevel: QRCode.CorrectLevel.M
             });
 
-            // Mostrar botón para copiar directamente con un toque si se desea
             document.getElementById("btnCopiarPortapapeles").style.display = "inline-block";
             document.getElementById("seccionReferencia").style.display = "block";
             document.getElementById("inputReferencia").value = "";
         });
 
-        // Copiar al portapapeles con un toque para pegar en el banco al instante
         document.getElementById("btnCopiarPortapapeles").addEventListener("click", function() {
-            navigator.clipboard.writeText(textoDatosQR).then(function() {
-                alert("¡Datos copiados al portapapeles! Abre tu app de banco y pégalos donde necesites.");
+            navigator.clipboard.writeText(cadenaLimpiaBanco).then(function() {
+                alert("¡Datos copiados!\n\nAbre tu app de banco, entra a Pago Móvil y selecciona la opción 'Pegar datos'.");
             }, function() {
-                alert("No se pudo copiar automáticamente, pero puedes verlos en pantalla.");
+                alert("No se pudo copiar automáticamente.");
             });
         });
 
@@ -365,4 +363,13 @@
         });
 
         document.getElementById("btnLimpiarCierre").addEventListener("click", function() {
-            if (confirm("¿Estás seguro de reiniciar el día? Se borrarán la
+            if (confirm("¿Estás seguro de reiniciar el día? Se borrarán las ventas registradas del cierre.")) {
+                historialCobros = [];
+                localStorage.removeItem("facilito_historial");
+                actualizarVistaCierre();
+                alert("Día reiniciado con éxito.");
+            }
+        });
+    </script>
+</body>
+</html>
