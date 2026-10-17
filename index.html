@@ -12,10 +12,8 @@
         .sub-title { font-size: 15px; color: #666; margin-bottom: 2px; }
         .author-credits { font-size: 12px; color: #888; font-style: italic; margin-bottom: 20px; }
         
-        /* Botón de Configuración de Datos */
         .btn-config { background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; margin-bottom: 15px; }
 
-        /* Modal / Cuadro de Formulario de Datos */
         .modal-datos { background: #fff; border: 2px solid #007bff; padding: 20px; border-radius: 12px; width: 85%; max-width: 330px; margin: 0 auto 20px auto; box-shadow: 0px 4px 10px rgba(0,0,0,0.15); text-align: left; }
         .modal-datos h3 { margin-top: 0; color: #007bff; text-align: center; }
         .modal-datos label { font-size: 13px; font-weight: bold; color: #333; display: block; margin-top: 10px; }
@@ -60,21 +58,29 @@
 
     <button id="btnAbrirConfig" class="btn-config" type="button">⚙️ Configurar Mis Datos Bancarios</button>
 
-    <!-- Formulario para ingresar/editar los datos del vendedor -->
     <div id="seccionConfigDatos" class="modal-datos" style="display: none;">
         <h3>Datos para recibir Pago Móvil</h3>
         
         <label>Banco de destino:</label>
         <select id="selectBanco">
-            <option value="Banesco">Banesco (0134)</option>
-            <option value="Banco de Venezuela">Banco de Venezuela (0102)</option>
-            <option value="Mercantil">Mercantil (0105)</option>
-            <option value="BNC">BNC - Banco Nacional de Crédito (0191)</option>
-            <option value="Provincial">BBVA Provincial (0108)</option>
-            <option value="Bancamiga">Bancamiga (0172)</option>
-            <option value="BFC">BFC Banco Fondo Común (0151)</option>
-            <option value="Bancaribe">Bancaribe (0114)</option>
-            <option value="Otro">Otro Banco</option>
+            <option value="0134">Banesco (0134)</option>
+            <option value="0102">Banco de Venezuela (0102)</option>
+            <option value="0105">Mercantil (0105)</option>
+            <option value="0191">BNC - Banco Nacional de Crédito (0191)</option>
+            <option value="0108">BBVA Provincial (0108)</option>
+            <option value="0172">Bancamiga (0172)</option>
+            <option value="0151">BFC Banco Fondo Común (0151)</option>
+            <option value="0114">Bancaribe (0114)</option>
+            <option value="0169">Mi Banco (0169)</option>
+            <option value="0137">Sofiitasa (0137)</option>
+            <option value="0138">Banco Plaza (0138)</option>
+            <option value="0104">Venezolano de Crédito (0104)</option>
+            <option value="0168">Bancrecer (0168)</option>
+            <option value="0175">Banco Bicentenario (0175)</option>
+            <option value="0163">Banco del Tesoro (0163)</option>
+            <option value="0171">Banco Activo (0171)</option>
+            <option value="0174">Banplus (0174)</option>
+            <option value="0177">Banco FANB (0177)</option>
         </select>
 
         <label>Cédula o RIF (Ej: V12345678 / J12345678):</label>
@@ -140,7 +146,6 @@
         var datosVendedor = JSON.parse(localStorage.getItem("facilito_datos_banco")) || null;
         var historialCobros = JSON.parse(localStorage.getItem("facilito_historial")) || [];
 
-        // Si es la primera vez (no hay datos), mostrar el cuadro de configuración
         if (!datosVendedor) {
             document.getElementById("seccionConfigDatos").style.display = "block";
         }
@@ -151,7 +156,7 @@
                 sec.style.display = "none";
             } else {
                 if (datosVendedor) {
-                    document.getElementById("selectBanco").value = datosVendedor.banco || "Banesco";
+                    document.getElementById("selectBanco").value = datosVendedor.banco || "0134";
                     document.getElementById("inputCedula").value = datosVendedor.cedula || "";
                     document.getElementById("inputTelefono").value = datosVendedor.telefono || "";
                 }
@@ -161,11 +166,11 @@
 
         document.getElementById("btnGuardarConfig").addEventListener("click", function() {
             var b = document.getElementById("selectBanco").value;
-            var c = document.getElementById("inputCedula").value.trim().toUpperCase();
-            var t = document.getElementById("inputTelefono").value.trim();
+            var c = document.getElementById("inputCedula").value.trim().toUpperCase().replace(/[^VGJ0-9]/g, '');
+            var t = document.getElementById("inputTelefono").value.trim().replace(/[^0-9]/g, '');
 
-            if (!c || !t) {
-                alert("Por favor completa la Cédula/RIF y el Teléfono.");
+            if (!c || !t || t.length < 11) {
+                alert("Por favor introduce una Cédula/RIF válida (ej. V12345678) y un teléfono de 11 dígitos (ej. 04141234567).");
                 return;
             }
 
@@ -227,9 +232,9 @@
                 montoActualBs = valorInput.toFixed(2);
             }
 
-            // Formato estructurado para pago móvil
-            var textoPago = "PAGO MOVIL\nBanco: " + datosVendedor.banco + "\nCedula: " + datosVendedor.cedula + "\nTelefono: " + datosVendedor.telefono + "\nMonto: " + montoActualBs + " Bs.";
-            
+            // Cadena en formato estándar Pago Móvil Interbancario (PAGOMOVIL:BANCO;TELEFONO;CEDULA;MONTO)
+            var cadenaQR = "PAGOMOVIL:" + datosVendedor.banco + ";" + datosVendedor.telefono + ";" + datosVendedor.cedula + ";" + montoActualBs;
+
             try {
                 var mensajeVoz = "Facilito PM. Cobrando " + montoActualBs + " bolivares.";
                 var utterance = new SpeechSynthesisUtterance(mensajeVoz);
@@ -243,7 +248,7 @@
             contenedorQR.innerHTML = "";
             
             new QRCode(contenedorQR, {
-                text: textoPago,
+                text: cadenaQR,
                 width: 230,
                 height: 230,
                 colorDark: "#000000",
@@ -322,8 +327,8 @@
             }
 
             var sumaTotal = 0;
-            var textoReporte = "📊 CIERRE DE CAJA - FACILITO PM\n";
-            textoReporte += "👤 Vendedor: " + (datosVendedor ? datosVendedor.cedula : "Oswaldo Arvelo") + "\n";
+            var textoReporte = "📊 *CIERRE DE CAJA - FACILITO PM*\n";
+            textoReporte += "👤 *Vendedor:* " + (datosVendedor ? datosVendedor.cedula : "Oswaldo Arvelo") + "\n";
             textoReporte += "-----------------------------------\n";
 
             for (var i = 0; i < historialCobros.length; i++) {
@@ -333,8 +338,8 @@
             }
 
             textoReporte += "-----------------------------------\n";
-            textoReporte += "💰 TOTAL COBRADO: " + sumaTotal.toFixed(2) + " Bs.\n";
-            textoReporte += "📦 TOTAL VENTAS: " + historialCobros.length;
+            textoReporte += "💰 *TOTAL COBRADO:* " + sumaTotal.toFixed(2) + " Bs.\n";
+            textoReporte += "📦 *TOTAL VENTAS:* " + historialCobros.length;
 
             var urlWhatsApp = "https://api.whatsapp.com/send?text=" + encodeURIComponent(textoReporte);
             window.open(urlWhatsApp, "_blank");
