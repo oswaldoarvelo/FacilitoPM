@@ -51,7 +51,7 @@
         <button id="btnUSD" class="currency-btn" type="button">$ BCV</button>
     </div>
 
-    <div id="tasaDisplay" class="tasa-info">Tasa BCV: 36.50 Bs/$</div>
+    <div id="tasaDisplay" class="tasa-info">Obteniendo tasa real BCV...</div>
 
     <input type="number" id="monto" placeholder="Monto" inputmode="decimal">
     <br>
@@ -96,11 +96,27 @@
         };
 
         var monedaActual = "Bs";
-        var tasaBCV = 36.50;
+        var tasaBCV = 0; // Se cargará en vivo
         var montoActualBs = 0;
         
-        // Cargar historial guardado en el teléfono/PC
         var historialCobros = JSON.parse(localStorage.getItem("facilito_historial")) || [];
+
+        // Función para consultar la tasa real del BCV en vivo
+        async function consultarTasaBCV() {
+            try {
+                var respuesta = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+                var datos = await respuesta.json();
+                tasaBCV = datos.promedio;
+                document.getElementById("tasaDisplay").innerText = "Tasa BCV Oficial: " + tasaBCV.toFixed(2) + " Bs/$";
+            } catch (error) {
+                // Si falla el internet, ponemos un respaldo de emergencia pero avisamos
+                tasaBCV = 36.50; 
+                document.getElementById("tasaDisplay").innerText = "Tasa BCV (Modo sin internet): 36.50 Bs/$";
+            }
+        }
+
+        // Consultar tasa al iniciar la app
+        consultarTasaBCV();
 
         document.getElementById("btnBs").addEventListener("click", function() {
             monedaActual = "Bs";
@@ -124,6 +140,10 @@
             }
             
             if (monedaActual === "USD") {
+                if (tasaBCV === 0) {
+                    alert("Esperando la tasa BCV oficial. Por favor intente en un segundo.");
+                    return;
+                }
                 montoActualBs = (valorInput * tasaBCV).toFixed(2);
             } else {
                 montoActualBs = valorInput.toFixed(2);
@@ -150,7 +170,6 @@
             document.getElementById("inputReferencia").value = "";
         });
 
-        // Guardar el cobro en el historial
         document.getElementById("btnRegistrar").addEventListener("click", function() {
             var ref = document.getElementById("inputReferencia").value;
             if (!ref) {
@@ -169,14 +188,12 @@
 
             alert("¡Cobro registrado con éxito!\nMonto: " + montoActualBs + " Bs.\nRef: " + ref);
             
-            // Limpiar pantalla
             document.getElementById("monto").value = "";
             document.getElementById("qrcode").innerHTML = "";
             document.getElementById("montoVisible").innerText = "";
             document.getElementById("seccionReferencia").style.display = "none";
         });
 
-        // Mostrar / Ocultar el Resumen del Cierre
         document.getElementById("btnVerCierre").addEventListener("click", function() {
             var seccion = document.getElementById("seccionCierre");
             if (seccion.style.display === "block") {
@@ -213,7 +230,6 @@
             totalMontoSpan.innerText = sumaTotal.toFixed(2) + " Bs.";
         }
 
-        // Enviar Reporte de Cierre por WhatsApp
         document.getElementById("btnEnviarWS").addEventListener("click", function() {
             if (historialCobros.length === 0) {
                 alert("No hay ventas registradas para enviar.");
@@ -239,7 +255,6 @@
             window.open(urlWhatsApp, "_blank");
         });
 
-        // Reiniciar Día
         document.getElementById("btnLimpiarCierre").addEventListener("click", function() {
             if (confirm("¿Estás seguro de reiniciar el día? Se borrarán las ventas registradas del cierre.")) {
                 historialCobros = [];
