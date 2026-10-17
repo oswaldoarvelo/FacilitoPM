@@ -5,16 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Facilito PM</title>
     <link rel="manifest" href="manifest.json">
-    <!-- Librería interna confiable para generar QR localmente sin depender de APIs externas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; background-color: #f7f7f7; }
         .app-title { font-size: 32px; font-weight: bold; color: #007bff; margin-top: 5px; margin-bottom: 2px; }
         .sub-title { font-size: 15px; color: #666; margin-bottom: 2px; }
-        .author-credits { font-size: 12px; color: #888; font-style: italic; margin-bottom: 25px; }
+        .author-credits { font-size: 12px; color: #888; font-style: italic; margin-bottom: 20px; }
         
-        .box-instalar { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 12px; border-radius: 10px; width: 85%; max-width: 320px; margin: 30px auto 10px auto; font-size: 13px; text-align: left; box-shadow: 0px 2px 4px rgba(0,0,0,0.05); }
-        .box-instalar b { color: #533f03; }
+        /* Botón de Configuración de Datos */
+        .btn-config { background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; margin-bottom: 15px; }
+
+        /* Modal / Cuadro de Formulario de Datos */
+        .modal-datos { background: #fff; border: 2px solid #007bff; padding: 20px; border-radius: 12px; width: 85%; max-width: 330px; margin: 0 auto 20px auto; box-shadow: 0px 4px 10px rgba(0,0,0,0.15); text-align: left; }
+        .modal-datos h3 { margin-top: 0; color: #007bff; text-align: center; }
+        .modal-datos label { font-size: 13px; font-weight: bold; color: #333; display: block; margin-top: 10px; }
+        .modal-datos input, .modal-datos select { width: 100%; font-size: 16px; padding: 10px; margin-top: 4px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
+        .btn-guardar-datos { background-color: #28a745; color: white; font-weight: bold; font-size: 16px; border: none; padding: 12px; border-radius: 8px; width: 100%; margin-top: 15px; cursor: pointer; }
 
         .currency-selector { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
         .currency-btn { font-size: 18px; font-weight: bold; padding: 10px 20px; border: 2px solid #007bff; background: #fff; color: #007bff; border-radius: 8px; cursor: pointer; flex: 1; max-width: 150px; }
@@ -22,7 +28,7 @@
 
         .tasa-info { font-size: 14px; color: #333; margin-bottom: 15px; font-weight: bold; background: #e9ecef; padding: 8px; border-radius: 6px; display: inline-block; }
         
-        input { font-size: 28px; padding: 15px; width: 85%; max-width: 320px; margin-bottom: 15px; border-radius: 12px; border: 2px solid #ccc; text-align: center; }
+        input.monto-input { font-size: 28px; padding: 15px; width: 85%; max-width: 320px; margin-bottom: 15px; border-radius: 12px; border: 2px solid #ccc; text-align: center; }
         button.btn-cobrar { font-size: 24px; font-weight: bold; padding: 18px 35px; background-color: #28a745; color: white; border: none; border-radius: 12px; cursor: pointer; width: 85%; max-width: 320px; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); }
         
         #qrcode { margin-top: 25px; display: flex; justify-content: center; }
@@ -40,6 +46,7 @@
         .btn-ws { background-color: #25D366; color: white; font-weight: bold; border: none; padding: 12px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; margin-top: 15px; }
         .btn-borrar { background-color: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-size: 13px; cursor: pointer; width: 100%; margin-top: 10px; }
         
+        .box-instalar { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 12px; border-radius: 10px; width: 85%; max-width: 320px; margin: 30px auto 10px auto; font-size: 13px; text-align: left; box-shadow: 0px 2px 4px rgba(0,0,0,0.05); }
         .banner { font-size: 13px; background: #333; color: #fff; padding: 8px; margin-bottom: 15px; border-radius: 6px; }
         footer { margin-top: 20px; font-size: 12px; color: #777; }
     </style>
@@ -51,6 +58,34 @@
     <div class="sub-title">Cobro rápido y sencillo</div>
     <div class="author-credits">Desarrollado por Oswaldo Arvelo</div>
 
+    <button id="btnAbrirConfig" class="btn-config" type="button">⚙️ Configurar Mis Datos Bancarios</button>
+
+    <!-- Formulario para ingresar/editar los datos del vendedor -->
+    <div id="seccionConfigDatos" class="modal-datos" style="display: none;">
+        <h3>Datos para recibir Pago Móvil</h3>
+        
+        <label>Banco de destino:</label>
+        <select id="selectBanco">
+            <option value="Banesco">Banesco (0134)</option>
+            <option value="Banco de Venezuela">Banco de Venezuela (0102)</option>
+            <option value="Mercantil">Mercantil (0105)</option>
+            <option value="BNC">BNC - Banco Nacional de Crédito (0191)</option>
+            <option value="Provincial">BBVA Provincial (0108)</option>
+            <option value="Bancamiga">Bancamiga (0172)</option>
+            <option value="BFC">BFC Banco Fondo Común (0151)</option>
+            <option value="Bancaribe">Bancaribe (0114)</option>
+            <option value="Otro">Otro Banco</option>
+        </select>
+
+        <label>Cédula o RIF (Ej: V12345678 / J12345678):</label>
+        <input type="text" id="inputCedula" placeholder="Ej: V12345678">
+
+        <label>Teléfono registrado en Pago Móvil:</label>
+        <input type="tel" id="inputTelefono" placeholder="Ej: 04141234567">
+
+        <button id="btnGuardarConfig" class="btn-guardar-datos" type="button">💾 Guardar Mis Datos</button>
+    </div>
+
     <div class="currency-selector">
         <button id="btnBs" class="currency-btn active" type="button">Bs.</button>
         <button id="btnUSD" class="currency-btn" type="button">$ BCV</button>
@@ -58,7 +93,7 @@
 
     <div id="tasaDisplay" class="tasa-info">Obteniendo tasa real BCV...</div>
 
-    <input type="number" id="monto" placeholder="Monto" inputmode="decimal">
+    <input type="number" id="monto" class="monto-input" placeholder="Monto" inputmode="decimal">
     <br>
     <button class="btn-cobrar" id="btnGenerar" type="button">Generar QR</button>
     
@@ -98,17 +133,48 @@
     </footer>
 
     <script>
-        const datosFijos = {
-            banco: "Banesco",
-            telefono: "04141234567",
-            cedula: "V12345678"
-        };
-
         var monedaActual = "Bs";
         var tasaBCV = 0;
         var montoActualBs = 0;
         
+        var datosVendedor = JSON.parse(localStorage.getItem("facilito_datos_banco")) || null;
         var historialCobros = JSON.parse(localStorage.getItem("facilito_historial")) || [];
+
+        // Si es la primera vez (no hay datos), mostrar el cuadro de configuración
+        if (!datosVendedor) {
+            document.getElementById("seccionConfigDatos").style.display = "block";
+        }
+
+        document.getElementById("btnAbrirConfig").addEventListener("click", function() {
+            var sec = document.getElementById("seccionConfigDatos");
+            if (sec.style.display === "block") {
+                sec.style.display = "none";
+            } else {
+                if (datosVendedor) {
+                    document.getElementById("selectBanco").value = datosVendedor.banco || "Banesco";
+                    document.getElementById("inputCedula").value = datosVendedor.cedula || "";
+                    document.getElementById("inputTelefono").value = datosVendedor.telefono || "";
+                }
+                sec.style.display = "block";
+            }
+        });
+
+        document.getElementById("btnGuardarConfig").addEventListener("click", function() {
+            var b = document.getElementById("selectBanco").value;
+            var c = document.getElementById("inputCedula").value.trim().toUpperCase();
+            var t = document.getElementById("inputTelefono").value.trim();
+
+            if (!c || !t) {
+                alert("Por favor completa la Cédula/RIF y el Teléfono.");
+                return;
+            }
+
+            datosVendedor = { banco: b, cedula: c, telefono: t };
+            localStorage.setItem("facilito_datos_banco", JSON.stringify(datosVendedor));
+            
+            document.getElementById("seccionConfigDatos").style.display = "none";
+            alert("¡Datos bancarios guardados con éxito!");
+        });
 
         async function consultarTasaBCV() {
             try {
@@ -139,6 +205,12 @@
         });
 
         document.getElementById("btnGenerar").addEventListener("click", function() {
+            if (!datosVendedor) {
+                alert("Primero debes configurar tus datos bancarios en el botón superior.");
+                document.getElementById("seccionConfigDatos").style.display = "block";
+                return;
+            }
+
             var valorInput = parseFloat(document.getElementById("monto").value);
             if (!valorInput || valorInput <= 0) {
                 alert("Por favor ingrese un monto valido");
@@ -155,7 +227,8 @@
                 montoActualBs = valorInput.toFixed(2);
             }
 
-            var textoPago = "Banco: " + datosFijos.banco + "\nTelefono: " + datosFijos.telefono + "\nCedula: " + datosFijos.cedula + "\nMonto: " + montoActualBs;
+            // Formato estructurado para pago móvil
+            var textoPago = "PAGO MOVIL\nBanco: " + datosVendedor.banco + "\nCedula: " + datosVendedor.cedula + "\nTelefono: " + datosVendedor.telefono + "\nMonto: " + montoActualBs + " Bs.";
             
             try {
                 var mensajeVoz = "Facilito PM. Cobrando " + montoActualBs + " bolivares.";
@@ -166,9 +239,8 @@
 
             document.getElementById("montoVisible").innerText = "Total a pagar: " + montoActualBs + " Bs.";
             
-            // Generación limpia y local del código QR
             var contenedorQR = document.getElementById("qrcode");
-            contenedorQR.innerHTML = ""; // Limpiar anterior
+            contenedorQR.innerHTML = "";
             
             new QRCode(contenedorQR, {
                 text: textoPago,
@@ -251,7 +323,7 @@
 
             var sumaTotal = 0;
             var textoReporte = "📊 CIERRE DE CAJA - FACILITO PM\n";
-            textoReporte += "👤 Vendedor: Oswaldo Arvelo\n";
+            textoReporte += "👤 Vendedor: " + (datosVendedor ? datosVendedor.cedula : "Oswaldo Arvelo") + "\n";
             textoReporte += "-----------------------------------\n";
 
             for (var i = 0; i < historialCobros.length; i++) {
