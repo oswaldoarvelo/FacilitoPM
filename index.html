@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Facilito PM</title>
     <link rel="manifest" href="manifest.json">
+    <!-- Librería interna confiable para generar QR localmente sin depender de APIs externas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; background-color: #f7f7f7; }
         .app-title { font-size: 32px; font-weight: bold; color: #007bff; margin-top: 5px; margin-bottom: 2px; }
         .sub-title { font-size: 15px; color: #666; margin-bottom: 2px; }
         .author-credits { font-size: 12px; color: #888; font-style: italic; margin-bottom: 25px; }
         
-        /* Caja de ayuda abajo */
         .box-instalar { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 12px; border-radius: 10px; width: 85%; max-width: 320px; margin: 30px auto 10px auto; font-size: 13px; text-align: left; box-shadow: 0px 2px 4px rgba(0,0,0,0.05); }
         .box-instalar b { color: #533f03; }
 
@@ -24,7 +25,9 @@
         input { font-size: 28px; padding: 15px; width: 85%; max-width: 320px; margin-bottom: 15px; border-radius: 12px; border: 2px solid #ccc; text-align: center; }
         button.btn-cobrar { font-size: 24px; font-weight: bold; padding: 18px 35px; background-color: #28a745; color: white; border: none; border-radius: 12px; cursor: pointer; width: 85%; max-width: 320px; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); }
         
-        #qrcode { margin-top: 25px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #qrcode { margin-top: 25px; display: flex; justify-content: center; }
+        #qrcode img { border: 4px solid #333; border-radius: 8px; background: white; padding: 5px; margin: 0 auto; }
+        
         #montoVisible { font-size: 26px; font-weight: bold; color: #333; margin-top: 15px; }
         
         .seccion-ref { margin-top: 20px; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: none; max-width: 350px; margin-left: auto; margin-right: auto; }
@@ -84,7 +87,6 @@
         <button class="btn-borrar" id="btnLimpiarCierre">⚠️ Reiniciar Día (Borrar Historial)</button>
     </div>
 
-    <!-- Guía de instalación movida al final de todo -->
     <div class="box-instalar">
         <b>📲 ¿Cómo instalar esta App en tu teléfono?</b><br>
         • En <b>Android (Chrome)</b>: Toca los 3 puntitos <b>⋮</b> arriba a la derecha y selecciona <b>"Agregar a la pantalla principal"</b>.<br>
@@ -164,11 +166,18 @@
 
             document.getElementById("montoVisible").innerText = "Total a pagar: " + montoActualBs + " Bs.";
             
+            // Generación limpia y local del código QR
             var contenedorQR = document.getElementById("qrcode");
-            var urlQR = "https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=" + encodeURIComponent(textoPago);
+            contenedorQR.innerHTML = ""; // Limpiar anterior
             
-            contenedorQR.innerHTML = '<img src="' + urlQR + '" alt="Codigo QR" style="border: 4px solid #333; border-radius: 8px; background: white; padding: 5px;">' +
-                                     '<br><a href="' + urlQR + '" target="_blank" style="margin-top:10px; font-size:14px; color:#007bff;">Si no carga el QR, haz clic aqui para abrirlo</a>';
+            new QRCode(contenedorQR, {
+                text: textoPago,
+                width: 230,
+                height: 230,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
 
             document.getElementById("seccionReferencia").style.display = "block";
             document.getElementById("inputReferencia").value = "";
@@ -235,4 +244,38 @@
         }
 
         document.getElementById("btnEnviarWS").addEventListener("click", function() {
-            if (historialCobros.length === 0
+            if (historialCobros.length === 0) {
+                alert("No hay ventas registradas para enviar.");
+                return;
+            }
+
+            var sumaTotal = 0;
+            var textoReporte = "📊 CIERRE DE CAJA - FACILITO PM\n";
+            textoReporte += "👤 Vendedor: Oswaldo Arvelo\n";
+            textoReporte += "-----------------------------------\n";
+
+            for (var i = 0; i < historialCobros.length; i++) {
+                var item = historialCobros[i];
+                sumaTotal += parseFloat(item.monto);
+                textoReporte += (i+1) + ". " + item.monto + " Bs. | Ref: " + item.referencia + " (" + item.hora + ")\n";
+            }
+
+            textoReporte += "-----------------------------------\n";
+            textoReporte += "💰 TOTAL COBRADO: " + sumaTotal.toFixed(2) + " Bs.\n";
+            textoReporte += "📦 TOTAL VENTAS: " + historialCobros.length;
+
+            var urlWhatsApp = "https://api.whatsapp.com/send?text=" + encodeURIComponent(textoReporte);
+            window.open(urlWhatsApp, "_blank");
+        });
+
+        document.getElementById("btnLimpiarCierre").addEventListener("click", function() {
+            if (confirm("¿Estás seguro de reiniciar el día? Se borrarán las ventas registradas del cierre.")) {
+                historialCobros = [];
+                localStorage.removeItem("facilito_historial");
+                actualizarVistaCierre();
+                alert("Día reiniciado con éxito.");
+            }
+        });
+    </script>
+</body>
+</html>
