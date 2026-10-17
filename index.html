@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Facilito PM</title>
     <link rel="manifest" href="manifest.json">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; background-color: #f7f7f7; }
         .app-title { font-size: 32px; font-weight: bold; color: #007bff; margin-top: 5px; margin-bottom: 2px; }
@@ -29,8 +28,8 @@
         input.monto-input { font-size: 28px; padding: 15px; width: 85%; max-width: 320px; margin-bottom: 15px; border-radius: 12px; border: 2px solid #ccc; text-align: center; }
         button.btn-cobrar { font-size: 24px; font-weight: bold; padding: 18px 35px; background-color: #28a745; color: white; border: none; border-radius: 12px; cursor: pointer; width: 85%; max-width: 320px; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); }
         
-        #qrcode { margin-top: 25px; display: flex; justify-content: center; }
-        #qrcode img { border: 4px solid #333; border-radius: 8px; background: white; padding: 5px; margin: 0 auto; }
+        #qrcode { margin-top: 20px; display: flex; flex-direction: column; align-items: center; }
+        #qrcode img { border: 4px solid #333; border-radius: 8px; background: white; padding: 5px; }
         
         #montoVisible { font-size: 26px; font-weight: bold; color: #333; margin-top: 15px; }
         
@@ -74,7 +73,7 @@
             <option value="0151">BFC Banco Fondo Común (0151)</option>
             <option value="0114">Bancaribe (0114)</option>
             <option value="0169">Mi Banco (0169)</option>
-            <option value="0137">Sofiitasa (0137)</option>
+            <option value="0137">Sofitasa (0137)</option>
             <option value="0138">Banco Plaza (0138)</option>
             <option value="0104">Venezolano de Crédito (0104)</option>
             <option value="0168">Bancrecer (0168)</option>
@@ -115,10 +114,10 @@
         <p style="font-size: 14px; color: #555;">Introduce los últimos números de la referencia del banco:</p>
         <input type="text" id="inputReferencia" class="input-ref" placeholder="Ej: 1234">
         <br>
-        <button class="btn-guardar" id="btnRegistrar">Guardar Cobro</button>
+        <button class="btn-guardar" id="btnRegistrar" type="button">Guardar Cobro</button>
     </div>
 
-    <button class="btn-cierre-main" id="btnVerCierre">📊 Cierre de Caja / Día</button>
+    <button class="btn-cierre-main" id="btnVerCierre" type="button">📊 Cierre de Caja / Día</button>
 
     <div id="seccionCierre" class="seccion-cierre">
         <h3 style="text-align:center; margin-top:0;">Resumen del Día</h3>
@@ -128,8 +127,8 @@
         <h4>Detalle de cobros:</h4>
         <div id="listaVentas">No hay cobros registrados hoy.</div>
         
-        <button class="btn-ws" id="btnEnviarWS">📲 Enviar Cierre por WhatsApp</button>
-        <button class="btn-borrar" id="btnLimpiarCierre">⚠️ Reiniciar Día (Borrar Historial)</button>
+        <button class="btn-ws" id="btnEnviarWS" type="button">📲 Enviar Cierre por WhatsApp</button>
+        <button class="btn-borrar" id="btnLimpiarCierre" type="button">⚠️ Reiniciar Día (Borrar Historial)</button>
     </div>
 
     <div class="box-instalar">
@@ -144,7 +143,7 @@
 
     <script>
         var monedaActual = "Bs";
-        var tasaBCV = 0;
+        var tasaBCV = 36.50;
         var montoActualBs = 0;
         var cadenaLimpiaBanco = "";
         
@@ -190,11 +189,12 @@
             try {
                 var respuesta = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
                 var datos = await respuesta.json();
-                tasaBCV = datos.promedio;
-                document.getElementById("tasaDisplay").innerText = "Tasa BCV Oficial: " + tasaBCV.toFixed(2) + " Bs/$";
+                if (datos && datos.promedio) {
+                    tasaBCV = datos.promedio;
+                    document.getElementById("tasaDisplay").innerText = "Tasa BCV Oficial: " + tasaBCV.toFixed(2) + " Bs/$";
+                }
             } catch (error) {
-                tasaBCV = 36.50; 
-                document.getElementById("tasaDisplay").innerText = "Tasa BCV (Modo sin internet): 36.50 Bs/$";
+                document.getElementById("tasaDisplay").innerText = "Tasa BCV (Modo sin internet): " + tasaBCV.toFixed(2) + " Bs/$";
             }
         }
 
@@ -223,27 +223,20 @@
 
             var valorInput = parseFloat(document.getElementById("monto").value);
             if (!valorInput || valorInput <= 0) {
-                alert("Por favor ingrese un monto valido");
+                alert("Por favor ingrese un monto válido.");
                 return;
             }
             
             if (monedaActual === "USD") {
-                if (tasaBCV === 0) {
-                    alert("Esperando la tasa BCV oficial. Por favor intente en un segundo.");
-                    return;
-                }
                 montoActualBs = (valorInput * tasaBCV).toFixed(2);
             } else {
                 montoActualBs = valorInput.toFixed(2);
             }
 
-            // Cadena limpia estándar sin etiquetas para pegado automático en la banca móvil:
-            // Formato: BANCO TELEFONO CEDULA MONTO
-            // Ej: 0134 04141234567 V12345678 150.00
             cadenaLimpiaBanco = datosVendedor.banco + " " + datosVendedor.telefono + " " + datosVendedor.cedula + " " + montoActualBs;
 
             try {
-                var mensajeVoz = "Facilito PM. Cobrando " + montoActualBs + " bolivares.";
+                var mensajeVoz = "Facilito PM. Cobrando " + montoActualBs + " bolívares.";
                 var utterance = new SpeechSynthesisUtterance(mensajeVoz);
                 utterance.lang = "es-ES";
                 window.speechSynthesis.speak(utterance);
@@ -252,16 +245,8 @@
             document.getElementById("montoVisible").innerText = "Total a pagar: " + montoActualBs + " Bs.";
             
             var contenedorQR = document.getElementById("qrcode");
-            contenedorQR.innerHTML = "";
-            
-            new QRCode(contenedorQR, {
-                text: cadenaLimpiaBanco,
-                width: 230,
-                height: 230,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.M
-            });
+            var urlQR = "https://api.qrserver.com/v1/create-qr-code/?size=230x230&data=" + encodeURIComponent(cadenaLimpiaBanco);
+            contenedorQR.innerHTML = '<img src="' + urlQR + '" alt="Código QR de Pago">';
 
             document.getElementById("btnCopiarPortapapeles").style.display = "inline-block";
             document.getElementById("seccionReferencia").style.display = "block";
@@ -269,17 +254,33 @@
         });
 
         document.getElementById("btnCopiarPortapapeles").addEventListener("click", function() {
-            navigator.clipboard.writeText(cadenaLimpiaBanco).then(function() {
-                alert("¡Datos copiados!\n\nAbre tu app de banco, entra a Pago Móvil y selecciona la opción 'Pegar datos'.");
-            }, function() {
-                alert("No se pudo copiar automáticamente.");
-            });
+            if (!cadenaLimpiaBanco) return;
+            
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(cadenaLimpiaBanco).then(function() {
+                    alert("¡Datos copiados!\n\nAbre tu app de banco, entra a Pago Móvil y selecciona 'Pegar datos'.");
+                }).catch(function() {
+                    copiarManual(cadenaLimpiaBanco);
+                });
+            } else {
+                copiarManual(cadenaLimpiaBanco);
+            }
         });
 
+        function copiarManual(texto) {
+            var tempInput = document.createElement("input");
+            tempInput.value = texto;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            alert("¡Datos copiados al portapapeles!\n\nAbre tu app de banco, entra a Pago Móvil y selecciona 'Pegar datos'.");
+        }
+
         document.getElementById("btnRegistrar").addEventListener("click", function() {
-            var ref = document.getElementById("inputReferencia").value;
+            var ref = document.getElementById("inputReferencia").value.trim();
             if (!ref) {
-                alert("Por favor coloque el número de referencia");
+                alert("Por favor coloque el número de referencia.");
                 return;
             }
 
@@ -364,12 +365,3 @@
 
         document.getElementById("btnLimpiarCierre").addEventListener("click", function() {
             if (confirm("¿Estás seguro de reiniciar el día? Se borrarán las ventas registradas del cierre.")) {
-                historialCobros = [];
-                localStorage.removeItem("facilito_historial");
-                actualizarVistaCierre();
-                alert("Día reiniciado con éxito.");
-            }
-        });
-    </script>
-</body>
-</html>
